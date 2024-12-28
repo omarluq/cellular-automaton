@@ -56,14 +56,13 @@
 #   Show                            Show the subsequent commands in the output
 
 Output demo.gif
-
 Set Shell "bash"
-Set FontSize 32
+Set FontSize 24
 Set Width 1200
 Set Height 1200
-
-Type "crystal main.cr --rows=50 --cols=100 --gens=500" 
-Sleep 500ms
+Set Theme nord
+Set TypingSpeed 50ms
+Type "crystal main.cr --rows=25 --cols=50 --gens=250 --delay=0.1"
+Sleep 5ms
 Enter
-
-Sleep 60s
+Sleep 31s

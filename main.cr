@@ -1,228 +1,237 @@
 require "colorize"
 require "option_parser"
 
-class Brain # :nodoc
+class Brain
+  PATTERNS = {
+    "blinker" => [
+      [1, 1, 1],
+    ],
+    "beacon" => [
+      [1, 1, 0, 0],
+      [1, 1, 0, 0],
+      [0, 0, 1, 1],
+      [0, 0, 1, 1],
+    ],
+    "pulsar" => [
+      [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+      [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+      [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+      [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+      [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+      [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+      [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0],
+    ],
+    "glider" => [
+      [0, 1, 0],
+      [0, 0, 1],
+      [1, 1, 1],
+    ],
+    "gosper_glider_gun" => [
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+      [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ],
+  }
+
   class Config
     property rows : Int32
     property cols : Int32
     property gens : Int32
     property buffer_height : Int32
     property buffer_width : Int32
+    property update_delay : Float64
 
-    def initialize(@rows = 50, @cols = 50, @gens = 1000)
+    def initialize(@rows = 50, @cols = 50, @gens = 1000, @update_delay = 0.1)
       @buffer_height = rows + 7
       @buffer_width = cols + 4
     end
   end
 
-  class Cell
-    enum State
-      On    = 1
-      Off   = 0
-      Dying = 2
-    end
-
-    property state : State
-    property x : Int32
-    property y : Int32
-
-    def initialize(@x : Int32, @y : Int32)
-      @state = if Random.rand < 0.3
-                 State::On
-               else
-                 State::Off
-               end
-    end
-
-    def update_state(grid)
-      neighbors = find_neighbors(grid)
-      alive_neighbors = neighbors.count { |cell| cell.state.on? }
-      dying_neighbors = neighbors.count { |cell| cell.state.dying? }
-
-      @state = case @state
-               when .on?
-                 if alive_neighbors < 2 || alive_neighbors > 3
-                   State::Dying
-                 elsif dying_neighbors >= 4
-                   State::Dying
-                 else
-                   State::On
-                 end
-               when .dying?
-                 if alive_neighbors == 2 && Random.rand < 0.3
-                   State::On
-                 else
-                   State::Off
-                 end
-               when .off?
-                 if alive_neighbors == 3 || (alive_neighbors == 2 && dying_neighbors >= 2)
-                   State::On
-                 else
-                   State::Off
-                 end
-               else
-                 @state
-               end
-    end
-
-    def find_neighbors(grid)
-      rows = grid.size
-      cols = grid[0].size
-      neighbors = [] of Cell
-
-      (-1..1).each do |dy|
-        (-1..1).each do |dx|
-          next if dx == 0 && dy == 0
-          ny = (@y + dy + rows) % rows
-          nx = (@x + dx + cols) % cols
-          neighbors << grid[ny][nx]
-        end
-      end
-
-      neighbors
-    end
-  end
-
-  @generation = 0
-  @buffer = Array(Array(String)).new
-  @prev_buffer = Array(Array(String)).new
-
-  property grid : Array(Array(Cell))
+  property grid : Array(Array(Bool))
+  property dying_grid : Array(Array(Bool))
   property config : Config
+  @generation = 0
 
   def initialize(@config : Config)
-    @grid = Array(Array(Cell)).new(@config.rows) do |y|
-      Array(Cell).new(@config.cols) do |x|
-        Cell.new(x, y)
-      end
-    end
-
-    @config.buffer_height.times do
-      @buffer << Array(String).new(@config.buffer_width, " ")
-      @prev_buffer << Array(String).new(@config.buffer_width, " ")
-    end
+    @grid = Array.new(@config.rows) { Array.new(@config.cols, false) }
+    @dying_grid = Array.new(@config.rows) { Array.new(@config.cols, false) }
   end
 
   def populate
-    new_grid = @grid.map do |row|
-      row.map do |cell|
-        new_cell = Cell.new(cell.x, cell.y)
-        new_cell.state = cell.state
-        new_cell
-      end
-    end
+    new_grid = Array.new(@config.rows) { Array.new(@config.cols, false) }
+    new_dying = Array.new(@config.rows) { Array.new(@config.cols, false) }
 
     @grid.each_with_index do |row, y|
       row.each_with_index do |cell, x|
-        cell.update_state(new_grid)
-      end
-    end
-    @generation += 1
-  end
+        neighbors = count_neighbors(y, x)
+        dying_neighbors = count_dying_neighbors(y, x)
 
-  private def clear_buffer
-    @config.buffer_height.times do |y|
-      @config.buffer_width.times do |x|
-        @buffer[y][x] = " "
-      end
-    end
-  end
-
-  private def swap_buffers
-    @buffer, @prev_buffer = @prev_buffer, @buffer
-  end
-
-  private def draw_to_buffer(y : Int32, x : Int32, char : String)
-    return if y < 0 || y >= @config.buffer_height || x < 0 || x >= @config.buffer_width
-    @buffer[y][x] = char
-  end
-
-  def render_frame
-    clear_buffer
-
-    alive_count = @grid.sum { |row| row.count { |cell| cell.state.on? } }
-    dying_count = @grid.sum { |row| row.count { |cell| cell.state.dying? } }
-    dead_count = @grid.sum { |row| row.count { |cell| cell.state.off? } }
-
-    header = "═══ Generation: #{@generation} ═══"
-    header.chars.each_with_index do |char, x|
-      draw_to_buffer(0, x + 2, char.to_s.colorize(:blue).to_s)
-    end
-
-    draw_to_buffer(1, 2, "Alive: #{alive_count} ♥".colorize(:green).to_s)
-    draw_to_buffer(2, 2, "Dying: #{dying_count} ⚡".colorize(:yellow).to_s)
-    draw_to_buffer(3, 2, "Dead:  #{dead_count} ✝".colorize(:dark_gray).to_s)
-
-    @grid.each_with_index do |row, y|
-      row.each_with_index do |cell, x|
-        char = case cell.state
-               when .on?    then "■".colorize(:green)
-               when .dying? then "▨".colorize(:yellow)
-               when .off?   then "□".colorize(:dark_gray)
-               end
-        draw_to_buffer(y + 5, x + 2, char.to_s)
-      end
-    end
-
-    print "\033[H"
-    @config.buffer_height.times do |y|
-      @config.buffer_width.times do |x|
-        if @buffer[y][x] != @prev_buffer[y][x]
-          print "\033[#{y + 1};#{x + 1}H#{@buffer[y][x]}"
+        if cell # alive
+          if neighbors < 2 || neighbors > 3 || dying_neighbors >= 4
+            new_dying[y][x] = true
+          else
+            new_grid[y][x] = true
+          end
+        elsif @dying_grid[y][x] # dying
+          if neighbors == 2 && Random.rand < 0.3
+            new_grid[y][x] = true
+          end
+        else # dead
+          if neighbors == 3 || (neighbors == 2 && dying_neighbors >= 2)
+            new_grid[y][x] = true
+          end
         end
       end
     end
-    STDOUT.flush
 
-    swap_buffers
+    @grid = new_grid
+    @dying_grid = new_dying
+    @generation += 1
   end
-end
 
-def add_glider(grid, start_x, start_y)
-  glider = [
-    [0, 1, 0],
-    [0, 0, 1],
-    [1, 1, 1],
-  ]
+  private def count_neighbors(y : Int32, x : Int32) : Int32
+    count = 0
+    (-1..1).each do |dy|
+      (-1..1).each do |dx|
+        next if dx == 0 && dy == 0
+        ny = (y + dy + @config.rows) % @config.rows
+        nx = (x + dx + @config.cols) % @config.cols
+        count += @grid[ny][nx] ? 1 : 0
+      end
+    end
+    count
+  end
 
-  glider.each_with_index do |row, y|
-    row.each_with_index do |val, x|
-      if val == 1
-        grid[(start_y + y) % grid.size][(start_x + x) % grid.size].state = Brain::Cell::State::On
+  private def count_dying_neighbors(y : Int32, x : Int32) : Int32
+    count = 0
+    (-1..1).each do |dy|
+      (-1..1).each do |dx|
+        next if dx == 0 && dy == 0
+        ny = (y + dy + @config.rows) % @config.rows
+        nx = (x + dx + @config.cols) % @config.cols
+        count += @dying_grid[ny][nx] ? 1 : 0
+      end
+    end
+    count
+  end
+
+  def add_pattern(pattern_name : String, start_x : Int32, start_y : Int32)
+    pattern = PATTERNS[pattern_name]?
+    return unless pattern
+
+    pattern.each_with_index do |row, y|
+      row.each_with_index do |val, x|
+        if val == 1
+          @grid[(start_y + y) % @config.rows][(start_x + x) % @config.cols] = true
+        end
       end
     end
   end
+
+  def add_random_patterns(count : Int32)
+    available_patterns = PATTERNS.keys
+    count.times do
+      pattern = available_patterns.sample
+      x = Random.rand(@config.cols)
+      y = Random.rand(@config.rows)
+      add_pattern(pattern, x, y)
+    end
+  end
+
+  def clear_grid
+    @grid.each do |row|
+      row.fill(false)
+    end
+    @dying_grid.each do |row|
+      row.fill(false)
+    end
+  end
+
+  def render_frame
+    # Calculate statistics
+    alive_count = @grid.sum { |row| row.count(true) }
+    dying_count = @dying_grid.sum { |row| row.count(true) }
+    dead_count = @config.rows * @config.cols - alive_count - dying_count
+
+    # Clear screen and move cursor to home
+    print "\033[H"
+
+    # Render header
+    header = "═══ Generation: #{@generation} ═══"
+    puts header.colorize(:blue)
+    puts "Alive: #{alive_count} ♥".colorize(:green)
+    puts "Dying: #{dying_count} ⚡".colorize(:yellow)
+    puts "Dead:  #{dead_count} ✝".colorize(:dark_gray)
+    puts
+
+    # Render grid
+    @grid.each_with_index do |row, y|
+      row.each_with_index do |cell, x|
+        char = if cell
+                 "■".colorize(:green)
+               elsif @dying_grid[y][x]
+                 "▨".colorize(:yellow)
+               else
+                 "□".colorize(:dark_gray)
+               end
+        print char
+      end
+      puts
+    end
+
+    STDOUT.flush
+  end
 end
 
+# Parse command line options
 config = Brain::Config.new
 OptionParser.parse do |parser|
   parser.banner = "Usage: crystal main.cr [arguments]"
-
   parser.on("--rows=ROWS", "Number of rows (default: 50)") { |rows| config.rows = rows.to_i }
   parser.on("--cols=COLS", "Number of columns (default: 50)") { |cols| config.cols = cols.to_i }
   parser.on("--gens=GENS", "Number of generations (default: 1000)") { |gens| config.gens = gens.to_i }
+  parser.on("--delay=SECONDS", "Delay between generations (default: 0.1)") { |delay| config.update_delay = delay.to_f }
   parser.on("-h", "--help", "Show this help") do
     puts parser
     exit
   end
 end
 
+# Initialize game
 brain = Brain.new(config)
 
-3.times do
-  add_glider(brain.grid, Random.rand(brain.grid.size), Random.rand(brain.grid.size))
-end
+# Add initial patterns
+brain.add_pattern("gosper_glider_gun", 1, 1)
+brain.add_pattern("pulsar", 25, 25)
+brain.add_random_patterns(3)
 
-print "\033[2J"
-print "\033[?25l"
+# Setup terminal
+print "\033[2J"   # Clear screen
+print "\033[?25l" # Hide cursor
 
 begin
   config.gens.times do
     brain.populate
     brain.render_frame
-    sleep 0.1.seconds
+    sleep config.update_delay
   end
+rescue ex : Exception
+  puts "Error: #{ex.message}"
+  ex.backtrace.each { |line| puts line }
 ensure
-  print "\033[?25h"
+  # Cleanup terminal state
+  print "\033[?25h" # Show cursor
   puts "\033[#{config.buffer_height + 1};1H"
 end
