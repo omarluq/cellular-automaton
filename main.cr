@@ -1,7 +1,7 @@
 require "colorize"
 require "option_parser"
 
-class Brain
+class Brain # :nodoc
   class Config
     property rows : Int32
     property cols : Int32
@@ -17,15 +17,15 @@ class Brain
 
   class Cell
     enum State
-      On = 1
-      Off = 0
+      On    = 1
+      Off   = 0
       Dying = 2
     end
-    
+
     property state : State
     property x : Int32
     property y : Int32
-    
+
     def initialize(@x : Int32, @y : Int32)
       @state = if Random.rand < 0.3
                  State::On
@@ -38,7 +38,7 @@ class Brain
       neighbors = find_neighbors(grid)
       alive_neighbors = neighbors.count { |cell| cell.state.on? }
       dying_neighbors = neighbors.count { |cell| cell.state.dying? }
-      
+
       @state = case @state
                when .on?
                  if alive_neighbors < 2 || alive_neighbors > 3
@@ -66,18 +66,19 @@ class Brain
     end
 
     def find_neighbors(grid)
-      grid_size = grid.size
+      rows = grid.size
+      cols = grid[0].size
       neighbors = [] of Cell
 
       (-1..1).each do |dy|
         (-1..1).each do |dx|
           next if dx == 0 && dy == 0
-          ny = (@y + dy + grid_size) % grid_size
-          nx = (@x + dx + grid_size) % grid_size
+          ny = (@y + dy + rows) % rows
+          nx = (@x + dx + cols) % cols
           neighbors << grid[ny][nx]
         end
       end
-      
+
       neighbors
     end
   end
@@ -95,7 +96,7 @@ class Brain
         Cell.new(x, y)
       end
     end
-    
+
     @config.buffer_height.times do
       @buffer << Array(String).new(@config.buffer_width, " ")
       @prev_buffer << Array(String).new(@config.buffer_width, " ")
@@ -110,7 +111,7 @@ class Brain
         new_cell
       end
     end
-    
+
     @grid.each_with_index do |row, y|
       row.each_with_index do |cell, x|
         cell.update_state(new_grid)
@@ -142,7 +143,7 @@ class Brain
     alive_count = @grid.sum { |row| row.count { |cell| cell.state.on? } }
     dying_count = @grid.sum { |row| row.count { |cell| cell.state.dying? } }
     dead_count = @grid.sum { |row| row.count { |cell| cell.state.off? } }
-    
+
     header = "═══ Generation: #{@generation} ═══"
     header.chars.each_with_index do |char, x|
       draw_to_buffer(0, x + 2, char.to_s.colorize(:blue).to_s)
@@ -181,9 +182,9 @@ def add_glider(grid, start_x, start_y)
   glider = [
     [0, 1, 0],
     [0, 0, 1],
-    [1, 1, 1]
+    [1, 1, 1],
   ]
-  
+
   glider.each_with_index do |row, y|
     row.each_with_index do |val, x|
       if val == 1
